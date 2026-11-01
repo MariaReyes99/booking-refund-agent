@@ -1,0 +1,56 @@
+sequenceDiagram
+    autonumber
+    actor G as Guest
+    participant C as Booking chat
+    participant A as LLM agent<br/>(router + ReAct)
+    participant S as Scratchpad
+    participant T as Tools<br/>hours · tables · bookings · deposits
+    participant M as Manager
+    G->>C: Ask for a table
+    C->>A: Message + guest phone (from chat channel)
+    Note over A: [GUARD] injection scan · card numbers stripped · message is DATA
+    A->>S: write intake + flags
+    Note over A,S: [SCOPE] 5 tools · refund_deposit / change_price / other guests NOT EXPOSED
+    loop Until date, time and party size are known
+        A->>C: Ask what is missing
+        C->>G: Question
+        G->>C: Details
+        C->>A: Details
+        Note over A: [STOPS] max 3 questions → staff call-back
+    end
+    A->>S: date · time · party_size
+    A->>T: check_availability(date, time, party)
+    Note over A,T: [RETRY] 3 tries 1-2-4 s · [BREAKER] opens after 5 fails → staff call-back
+    T-->>A: free seats
+    Note over A,S: [BRANCH] book_auto | large_party | no_table | ask | cancel_own | route_to_manager | unknown
+    alt No table free (or outside hours)
+        A->>T: check_availability (nearby slots)
+        T-->>A: 2 nearest free times
+    else Party is 8 or fewer
+        A->>T: create_booking(idempotency_key = chat_id)
+        T-->>A: booking_id
+        A->>S: booking_id
+    else Party is more than 8 (deposit needed)
+        A->>M: Approve group booking + PHP 2,000 deposit?
+        Note over A,M: [HITL GATE] money + kitchen capacity · [TIME LANE] 10 min
+        alt approved
+            M-->>A: approved (bound to chat + amount)
+            A->>S: approval
+            A->>T: charge_deposit(amount from policy, idempotency key, approval)
+            T-->>A: receipt
+            A->>S: deposit_charged = true (BEFORE booking)
+            A->>T: create_booking(idempotency key, receipt)
+            T-->>A: booking_id
+            A->>S: booking_id
+        else rejected
+            M-->>A: rejected
+            A->>T: check_availability(party = 8)
+            Note over A: offer a smaller table · nothing charged
+        else no answer in 10 min
+            Note over A: [SAFE DEFAULT] never charge on a timeout → "staff will call you back"
+        end
+    end
+    A->>S: final status · step count
+    Note over A,S: [STOPS] 10 steps checked BEFORE every action
+    A->>C: Confirmation or alternatives
+    C->>G: Show reply

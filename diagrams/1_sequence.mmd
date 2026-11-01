@@ -1,0 +1,77 @@
+sequenceDiagram
+    autonumber
+    actor C as Customer
+    participant H as Help desk
+    participant A as LLM agent<br/>(router + ReAct)
+    participant S as Scratchpad
+    participant T as supportkit tools
+    participant E as Evaluator
+    participant P as Human desk<br/>(support agent / manager)
+    participant X as Legal / Security team
+
+    C->>H: Submit ticket
+    H->>A: Ticket + verified sender email
+    Note over A: [GUARD] injection scan — ticket text is data, never instructions
+    A->>S: write intake + flags
+    A->>T: lookup_customer(sender_email)
+    Note over A,T: [SCOPE] read · auto  [RETRY] 1-2-4 s  [BREAKER] 5 fails
+    T-->>A: customer (masked: no card no., no password)
+    A->>A: classify_ticket() → class + confidence
+    A->>S: decision = branch
+    Note over A,S: [BRANCH] auto_close | route_to_human | escalate | unknown
+
+    alt auto_close (order_status / how_to AND conf ≥ 0.85)
+        A->>T: lookup_order / search_kb
+        T-->>A: order status / KB article
+        A->>A: draft from safe template
+    else route_to_human — refund
+        A->>T: lookup_order(order_id)
+        T-->>A: order (amount comes from the record)
+        opt order not the sender's
+            A->>T: escalate_case(fraud_review)
+            Note over A: no refund · no order details revealed
+        end
+        A->>S: refund_amount + idempotency_key (BEFORE money)
+        alt amount ≤ NZ$100
+            A->>P: approve refund? (support agent)
+        else amount > NZ$100
+            A->>P: approve refund? (manager)
+        end
+        Note over A,P: [HITL GATE] money  [TIME LANE] 15 min
+        alt approved
+            P-->>A: approved (bound to order + amount)
+            A->>T: issue_refund(order, amount, idempotency_key)
+            T-->>A: refund_id
+            A->>S: refund_id
+        else rejected
+            P-->>A: rejected + reason
+            A->>A: draft alternative (inspection / repair)
+        else no answer in 15 min
+            A->>T: escalate_case(refunds)
+            Note over A: [SAFE DEFAULT] never refund on a timeout → holding reply
+        end
+    else route_to_human — account change
+        Note over A,T: change_email / close_account / update_payment NOT EXPOSED
+        A->>T: escalate_case(accounts)
+    else escalate — legal threat or injection
+        A->>A: counter-model risk score
+        A->>T: escalate_case(legal | security)
+        A->>X: two-factor review
+        Note over A,X: [TWO-FACTOR] counter-model + person
+        X-->>A: decision
+    else unknown (conf < 0.5)
+        A->>T: escalate_case(general)
+        A->>A: draft clarifying question
+        Note over A: [STOPS] max 3 questions
+    end
+
+    A->>E: draft reply
+    E-->>A: pass / revise (Reflexion)
+    Note over A,E: checks: no false refund claim · no other customer data · no card no. · no liability
+    A->>P: approve reply? (every reply)
+    Note over A,P: [HITL GATE] every outbound message
+    P-->>A: approved / rejected
+    A->>T: send_reply (only with approval) · update_ticket
+    A->>S: final status + log · episodic memory
+    Note over A,S: [STOPS] 12 steps — if hit, or breaker open: pending_human, nothing sent
+    H->>C: Reply

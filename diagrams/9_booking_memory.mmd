@@ -1,0 +1,19 @@
+flowchart LR
+    subgraph W["Working scratchpad · scratchpad/&lt;chat_id&gt;.json · written after every step · deleted 30 days after the visit"]
+        sp["chat_id · guest_name · phone<br/>date · time · party_size · branch<br/>approval {by, status} · deposit_charged · deposit_receipt<br/>booking_id · step · questions_asked · injection_flags"]
+    end
+    subgraph E["Persists across chats"]
+        mem["seating preference per phone<br/>(phone stored as SHA-256 key)<br/>nothing else"]
+    end
+    subgraph P["Procedural (in system prompt)"]
+        rules["opening hours · booking rules<br/>deposit PHP 2,000 for > 8"]
+    end
+    subgraph X["Never in context"]
+        no["other guests' bookings / phones / names<br/>payment card details<br/>(stripped at intake)"]
+    end
+    ctx(["Every LLM call sees:<br/>system prompt + guest's latest message (as DATA)<br/>+ last 3 scratchpad steps + seating preference"])
+    rules --> ctx
+    sp -->|last 3 steps| ctx
+    mem -->|this phone only| ctx
+    no -. blocked .-x ctx
+    sp -->|on restart| resume{{"Resume rule<br/>deposit_charged = true → never charge again<br/>booking_id set → only confirm<br/>idempotency keys catch a crash between charge and write"}}

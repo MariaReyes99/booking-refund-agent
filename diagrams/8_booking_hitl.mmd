@@ -1,0 +1,16 @@
+stateDiagram-v2
+    [*] --> requested: party > 8 and table free
+    requested --> approved: manager approves (≤ 10 min)
+    requested --> rejected: manager rejects
+    requested --> timeout: no answer in 10 min
+    approved --> deposit_charged: charge_deposit(key) · written BEFORE booking
+    deposit_charged --> booked: create_booking(idempotency key, receipt)
+    rejected --> offered_smaller: offer table for 8 · nothing charged
+    timeout --> pending_manager: "staff will call you back" · nothing charged
+    booked --> [*]
+    offered_smaller --> [*]
+    pending_manager --> [*]
+    note right of deposit_charged
+        Resume rule: deposit_charged = true → never charge again
+        booking_id set → only confirm
+    end note

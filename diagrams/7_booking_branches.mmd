@@ -1,0 +1,29 @@
+flowchart TD
+    start([Guest message arrives]) --> guard{Injection guard<br/>strip cards · flag overrides}
+    guard -->|flags kept, rules unchanged| router{classify_request<br/>intent + confidence}
+    router -->|intent = hours| info[info_only<br/><i>get_opening_hours</i>]
+    router -->|refund_deposit or price_change| mgr[route_to_manager<br/><i>tool not exposed</i>]
+    router -->|intent = cancel| cancel{phone matches<br/>booking?}
+    router -->|confidence &lt; 0.5| unk[unknown<br/><i>FALLBACK</i>]
+    router -->|intent = book| slots{date, time, party<br/>all known?}
+    cancel -->|yes| cown[cancel_own]
+    cancel -->|no / not found| cref[cancel_refused<br/>no details revealed]
+    unk --> ask
+    slots -->|no| ask[ask<br/>question ≤ 3]
+    ask -->|answer| router
+    ask -->|3 asked| hand[handoff<br/>staff call-back]
+    slots -->|yes| open{open AND<br/>seats free ≥ party?}
+    open -->|no| none[no_table<br/>offer 2 nearest times]
+    open -->|yes, party ≤ 8| auto[book_auto<br/>create_booking + key]
+    open -->|yes, party &gt; 8| large[large_party<br/>HITL manager, 10 min]
+    large -->|approved| dep[charge_deposit → create_booking]
+    large -->|rejected| small[offer table for 8<br/>no charge]
+    large -->|timeout| cb[callback<br/>no charge]
+    classDef safe fill:#d1fae5,stroke:#10b981
+    classDef human fill:#ede9fe,stroke:#7c3aed
+    classDef warn fill:#fee2e2,stroke:#ef4444
+    classDef info fill:#cffafe,stroke:#06b6d4
+    class info,auto,cown,dep safe
+    class large,mgr,cb,hand human
+    class unk,cref warn
+    class none,small,ask info

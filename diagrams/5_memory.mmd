@@ -1,0 +1,30 @@
+flowchart TB
+    subgraph CTX[In context — every model call]
+      direction LR
+      c1[System prompt<br/>rules]
+      c2[Latest customer message<br/>wrapped as untrusted data,<br/>card numbers removed]
+      c3[Last 3 scratchpad steps]
+      c4[Masked customer record<br/>id · name · tier · card last 4]
+      c5[Skills for this class only]
+      c6[Last 3 past cases + lessons]
+    end
+    subgraph WS[Working scratchpad — runs/ticket.json]
+      w[run_id · started_at · last_step_index<br/>observations · decisions<br/>customer_id · issue_class · confidence · branch<br/>injection_flags · evidence · proposed_action<br/>refund_amount · approver_role_required<br/>idempotency_key · refund_id · approvals<br/>draft_reply · reply_sent · reply_id · status<br/>step_count · questions_asked · human_touchpoints]
+    end
+    subgraph EPI[Episodic — persists across chats, per customer_id]
+      e[past cases: class · outcome · refund_id<br/>Reflexion lessons from failed drafts]
+    end
+    subgraph PRO[Procedural — loaded only when needed]
+      p[refund_policy.md · tone_guide.md<br/>escalation_playbook.md · security_playbook.md]
+    end
+    subgraph NEV[Never in context]
+      n[Passwords / hashes · full card numbers<br/>other customers' records · approver notes from other tickets<br/>injected instructions as commands]
+    end
+    WS --> c3
+    EPI --> c6
+    PRO --> c5
+    NEV -. blocked .-x CTX
+    R{{Resume rule}} --> WS
+    R --- r1[reply_sent → stop<br/>refund_id set → never refund again, only confirm<br/>idempotency_key set → retry with SAME key<br/>approval recorded → never ask the person again]
+    classDef never fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    class n never

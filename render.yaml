@@ -1,0 +1,14 @@
+# Render blueprint: New > Blueprint, pick this repo. Keep ONE worker: approvals and chats live in memory.
+services:
+  - type: web
+    name: agent-duty-desk
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn web_app:app --workers 1 --threads 16 --timeout 120 --bind 0.0.0.0:$PORT
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.2
+      - key: DUTY_DESK_PASSWORD
+        sync: false          # Render asks you to type it in; it is never stored in the repo

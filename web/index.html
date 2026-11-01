@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Duty Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F3F5F8; --panel:#FFFFFF; --sunk:#E9EDF2; --line:#D6DCE5; --ink:#1B2330; --muted:#5B6678;
+  --harbour:#2C5A85; --harbour-soft:#E3ECF5; --wine:#7E2A45; --wine-soft:#F5E6EB;
+  --go:#2E7D5B; --go-soft:#E2F2EA; --stop:#B23A3A; --stop-soft:#F8E4E4; --wait:#A86A12; --wait-soft:#FBF0DC;
+  --slip:#FFFDF6; --slip-edge:#E4D9B8;
+  --r-s:6px; --r-m:10px;
+  --font:"Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{--paper:#141A23;--panel:#1C2430;--sunk:#18202A;--line:#2D3846;--ink:#E6EBF2;--muted:#9AA6B6;
+    --harbour:#7FB0DE;--harbour-soft:#1F3247;--wine:#E08AA6;--wine-soft:#3A2030;
+    --go:#5CC495;--go-soft:#173328;--stop:#EE7B7B;--stop-soft:#3A1E1E;--wait:#E8B25B;--wait-soft:#3A2D16;
+    --slip:#252A22;--slip-edge:#4A4630;}
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 var(--font)}
+button,select,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--harbour);outline-offset:2px}
+h1,h2,h3{margin:0;line-height:1.2}
+h2{font-size:1.25rem} h3{font-size:1rem}
+p{margin:0}
+.muted{color:var(--muted)}
+.small{font-size:.875rem}
+
+/* top bar */
+header{display:flex;align-items:center;gap:24px;padding:12px 24px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand h1{font-size:1.15rem}
+.brand span{color:var(--muted);font-size:.875rem}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav button{border:0;background:none;padding:8px 14px;border-radius:var(--r-s);cursor:pointer;color:var(--muted);font-weight:700}
+nav button[aria-selected=true]{background:var(--sunk);color:var(--ink)}
+nav button[data-tab=support][aria-selected=true]{box-shadow:inset 0 -3px 0 var(--harbour)}
+nav button[data-tab=booking][aria-selected=true]{box-shadow:inset 0 -3px 0 var(--wine)}
+.health{margin-left:auto;font-size:.85rem;color:var(--muted)}
+.health b{color:var(--ink)}
+
+main{padding:20px 24px 48px;max-width:1500px;margin:0 auto}
+section[role=tabpanel][hidden]{display:none}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-m);padding:16px}
+.stack>*+*{margin-top:12px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--panel);padding:8px 14px;border-radius:var(--r-s);cursor:pointer;font-weight:700}
+.btn:hover{background:var(--sunk)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn.primary{background:var(--harbour);border-color:var(--harbour);color:#fff}
+.btn.wine{background:var(--wine);border-color:var(--wine);color:#fff}
+@media (prefers-color-scheme: dark){.btn.primary,.btn.wine{color:#10161E}}
+label.field{display:flex;flex-direction:column;gap:4px;font-size:.875rem;color:var(--muted)}
+label.field input,label.field select,textarea{border:1px solid var(--line);background:var(--panel);border-radius:var(--r-s);padding:8px 10px;color:var(--ink)}
+textarea{width:100%;font-family:var(--mono);font-size:.82rem;line-height:1.5;min-height:150px;resize:vertical}
+pre{font-family:var(--mono);font-size:.8rem;background:var(--sunk);border-radius:var(--r-s);padding:12px;overflow:auto;max-height:360px;margin:0;white-space:pre-wrap;word-break:break-word}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:700}
+code{font-family:var(--mono);font-size:.85em}
+.tag{display:inline-block;padding:1px 8px;border-radius:999px;font-size:.8rem;font-weight:700;background:var(--sunk);white-space:nowrap}
+.tag.go{background:var(--go-soft);color:var(--go)} .tag.stop{background:var(--stop-soft);color:var(--stop)} .tag.wait{background:var(--wait-soft);color:var(--wait)}
+.tag.harbour{background:var(--harbour-soft);color:var(--harbour)} .tag.wine{background:var(--wine-soft);color:var(--wine)}
+.empty{color:var(--muted);padding:12px;border:1px dashed var(--line);border-radius:var(--r-s);font-size:.9rem}
+.err{color:var(--stop);background:var(--stop-soft);padding:10px 12px;border-radius:var(--r-s);font-size:.9rem}
+
+/* support layout */
+.support-grid{display:grid;grid-template-columns:270px minmax(0,1fr) 360px;gap:16px;align-items:start}
+.tickets{padding:6px}
+.tickets button{display:block;width:100%;text-align:left;border:0;background:none;padding:10px 10px;border-radius:var(--r-s);cursor:pointer}
+.tickets button:hover{background:var(--sunk)}
+.tickets button[aria-current=true]{background:var(--harbour-soft)}
+.tickets .tid{font-weight:700;color:var(--harbour);margin-right:6px}
+.tickets .sub{display:block;font-size:.85rem;color:var(--muted);margin-top:2px}
+.ticket-body{font-size:1.05rem;border-left:3px solid var(--harbour);padding:4px 0 4px 14px}
+.segmented{display:inline-flex;border:1px solid var(--line);border-radius:var(--r-s);overflow:hidden}
+.segmented button{border:0;background:var(--panel);padding:7px 12px;cursor:pointer}
+.segmented button[aria-pressed=true]{background:var(--ink);color:var(--paper);font-weight:700}
+.script-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.sticky{position:sticky;top:76px}
+
+/* the decision slip: the one bold element */
+.slip{background:var(--slip);border:1px solid var(--slip-edge);border-radius:4px;padding:18px 18px 16px;position:relative;box-shadow:0 1px 0 var(--slip-edge),0 10px 24px -14px rgba(60,50,20,.45)}
+.slip::before{content:"";position:absolute;left:0;right:0;top:0;height:6px;border-radius:4px 4px 0 0;background:repeating-linear-gradient(90deg,var(--wait) 0 14px,transparent 14px 22px)}
+.slip h3{font-size:1.15rem;margin-top:4px}
+.slip .who{font-size:.85rem;color:var(--wait);font-weight:700}
+.slip .prompt{margin:10px 0 12px;font-size:1rem}
+.lane{height:6px;background:var(--sunk);border-radius:3px;overflow:hidden}
+.lane i{display:block;height:100%;background:var(--wait);transition:width 1s linear}
+.lane-label{font-size:.8rem;color:var(--muted);margin-top:4px}
+.decide{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.decide .approve{background:var(--go);border-color:var(--go);color:#fff}
+.decide .reject{background:var(--panel);border-color:var(--stop);color:var(--stop)}
+.decide .lapse{grid-column:1/-1;background:none;border-style:dashed;color:var(--muted);font-weight:400}
+@media (prefers-color-scheme: dark){.decide .approve{color:#0F1A14}}
+.slip.enter{animation:slipin .35s ease-out}
+@keyframes slipin{from{transform:translateY(-8px) rotate(-.6deg);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion: reduce){.slip.enter{animation:none}.lane i{transition:none}}
+.desk-idle{border:1px dashed var(--line);border-radius:var(--r-m);padding:18px;color:var(--muted);font-size:.92rem}
+
+.log{font-family:var(--mono);font-size:.76rem;max-height:240px;overflow:auto;background:var(--sunk);border-radius:var(--r-s);padding:10px}
+.log div{padding:2px 0;border-bottom:1px solid var(--line)}
+.log div.h{color:var(--wait);font-weight:500}
+
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.fact{background:var(--sunk);border-radius:var(--r-s);padding:10px 12px}
+.fact b{display:block;font-size:1.05rem}
+.fact span{font-size:.8rem;color:var(--muted)}
+.reply-out{background:var(--harbour-soft);border-radius:var(--r-m) var(--r-m) var(--r-m) 2px;padding:12px 14px}
+.timeline{list-style:none;margin:0;padding:0;font-size:.88rem}
+.timeline li{display:grid;grid-template-columns:42px 1fr;gap:8px;padding:5px 0;border-bottom:1px solid var(--line)}
+.timeline .st{color:var(--muted);font-family:var(--mono);font-size:.78rem;padding-top:2px}
+.timeline .dec{color:var(--harbour);font-weight:700}
+#tab-booking .timeline .dec{color:var(--wine)}
+
+/* booking layout */
+.booking-grid{display:grid;grid-template-columns:minmax(320px,430px) minmax(0,1fr);gap:20px;align-items:start}
+.phone{background:var(--panel);border:1px solid var(--line);border-radius:22px;overflow:hidden;display:flex;flex-direction:column;height:calc(100vh - 150px);min-height:560px}
+.phone-head{background:var(--wine);color:#fff;padding:14px 18px}
+@media (prefers-color-scheme: dark){.phone-head{color:#1A0E13}}
+.phone-head h2{font-size:1.1rem}
+.phone-head p{font-size:.82rem;opacity:.85}
+.who-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--sunk)}
+.who-row input{width:100%;border:1px solid var(--line);border-radius:var(--r-s);padding:6px 8px;background:var(--panel);font-size:.88rem}
+.who-row label{font-size:.75rem;color:var(--muted)}
+.msgs{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.bubble{max-width:82%;padding:10px 13px;border-radius:16px;font-size:.95rem}
+.bubble.guest{align-self:flex-end;background:var(--wine);color:#fff;border-bottom-right-radius:4px}
+@media (prefers-color-scheme: dark){.bubble.guest{color:#1A0E13}}
+.bubble.agent{align-self:flex-start;background:var(--sunk);border-bottom-left-radius:4px}
+.bubble.note{align-self:center;background:none;color:var(--muted);font-size:.8rem;padding:2px}
+.typing{align-self:flex-start;color:var(--muted);font-size:.85rem}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;border-top:1px solid var(--line)}
+.chips button{flex:none;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:5px 11px;font-size:.8rem;cursor:pointer}
+.chips button:hover{border-color:var(--wine);color:var(--wine)}
+.composer{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
+.composer input{flex:1;min-width:0;border:1px solid var(--line);border-radius:999px;padding:10px 14px;background:var(--panel)}
+.console{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+.console .wide{grid-column:1/-1}
+.meter{display:flex;align-items:center;gap:8px;font-size:.85rem}
+.meter .bar{flex:1;height:8px;background:var(--sunk);border-radius:4px;overflow:hidden}
+.meter .bar i{display:block;height:100%;background:var(--wine)}
+.meter .bar i.hot{background:var(--stop)}
+
+/* tests + design */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.diagrams{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.diagrams figure{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:var(--r-m);padding:10px}
+.diagrams img{width:100%;height:220px;object-fit:contain;background:#fff;border-radius:var(--r-s);cursor:zoom-in}
+.diagrams figcaption{font-size:.85rem;color:var(--muted);margin-top:6px}
+dialog{border:0;border-radius:var(--r-m);padding:0;max-width:95vw;max-height:92vh}
+dialog img{display:block;max-width:95vw;max-height:88vh;background:#fff}
+dialog::backdrop{background:rgba(10,15,25,.6)}
+
+@media (max-width:1180px){
+  .support-grid{grid-template-columns:240px minmax(0,1fr)}
+  .support-grid .desk-col{grid-column:1/-1}
+  .sticky{position:static}
+}
+@media (max-width:860px){
+  header{padding:10px 16px;position:static} main{padding:16px}
+  .support-grid,.booking-grid,.console,.two{grid-template-columns:minmax(0,1fr)}
+  .script-grid{grid-template-columns:minmax(0,1fr)}
+  .phone{height:620px}
+  .health{margin-left:0}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><h1>Agent Duty Desk</h1><span>you are the human in the loop</span></div>
+  <nav role="tablist" aria-label="Sections">
+    <button role="tab" data-tab="support" aria-selected="true">Support desk</button>
+    <button role="tab" data-tab="booking" aria-selected="false">Bistro Uno bookings</button>
+    <button role="tab" data-tab="tests" aria-selected="false">Test suites</button>
+    <button role="tab" data-tab="design" aria-selected="false">Design sheet</button>
+  </nav>
+  <div class="health" id="health">Checking agents…</div>
+</header>
+
+<main>
+<!-- ============ SUPPORT DESK ============ -->
+<section role="tabpanel" id="tab-support">
+  <div class="support-grid">
+    <aside class="panel tickets" aria-label="Tickets">
+      <div style="padding:6px 10px 8px" class="row"><h2 style="font-size:1rem">Ticket queue</h2><span class="muted small" id="ticket-count"></span></div>
+      <div id="ticket-list"><div class="empty">Loading tickets…</div></div>
+    </aside>
+
+    <div class="stack" id="support-work">
+      <div class="panel stack" id="ticket-panel"><div class="empty">Pick a ticket from the queue.</div></div>
+      <div id="support-result"></div>
+    </div>
+
+    <aside class="desk-col">
+      <div class="sticky stack">
+        <div id="support-desk"><div class="desk-idle">No decisions waiting. When the agent needs a person to approve a reply, a refund or an escalation, the request lands here.</div></div>
+        <div class="panel stack">
+          <div class="row"><h3>Agent log</h3><span class="muted small">printed by the agent and desk</span></div>
+          <div class="log" id="support-log"><span class="muted">Nothing yet.</span></div>
+        </div>
+        <div class="panel stack">
+          <div class="row" style="justify-content:space-between"><h3>Mock store</h3><button class="btn small" id="support-reset">Reset store</button></div>
+          <div id="support-store" class="small muted">—</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ============ BOOKING ============ -->
+<section role="tabpanel" id="tab-booking" hidden>
+  <div class="booking-grid">
+    <div class="phone" aria-label="Guest chat">
+      <div class="phone-head"><h2>Bistro Uno</h2><p>Table bookings over chat · you are the guest</p></div>
+      <div class="who-row">
+        <div><label for="g-name">Your name</label><input id="g-name" value="Rina" autocomplete="off"></div>
+        <div><label for="g-phone">Phone (from the chat channel)</label><input id="g-phone" value="+63 900 000 0457" autocomplete="off"></div>
+      </div>
+      <div class="msgs" id="msgs" aria-live="polite"></div>
+      <div class="chips" id="chips" aria-label="Try a test message"></div>
+      <form class="composer" id="composer">
+        <input id="g-text" placeholder="Ask for a table, the hours, or to cancel…" autocomplete="off" aria-label="Message">
+        <button class="btn wine" id="g-send">Send</button>
+      </form>
+    </div>
+
+    <div class="console">
+      <div class="wide" id="booking-desk"></div>
+      <div class="panel stack">
+        <div class="row" style="justify-content:space-between"><h3>This chat</h3><button class="btn small" id="new-chat">New chat</button></div>
+        <div id="chat-state" class="stack"><div class="empty">Send a message to start a chat.</div></div>
+      </div>
+      <div class="panel stack">
+        <h3>What the agent did</h3>
+        <ul class="timeline" id="chat-timeline"><li><span></span><span class="muted">Steps appear here as the agent works.</span></li></ul>
+      </div>
+      <div class="panel stack wide">
+        <div class="row" style="justify-content:space-between">
+          <h3>Restaurant records (staff view)</h3>
+          <div class="row">
+            <label class="field" style="flex-direction:row;align-items:center;gap:6px">Manager time lane
+              <select id="lane"><option value="600">10 min (as designed)</option><option value="60">60 s (demo)</option><option value="20">20 s (demo)</option></select>
+            </label>
+            <button class="btn small" id="booking-reset">Reset restaurant</button>
+          </div>
+        </div>
+        <div id="records"></div>
+      </div>
+      <div class="panel stack wide">
+        <h3>Scratchpad file</h3>
+        <details><summary class="small muted">Show the raw JSON the agent writes after every step</summary><pre id="sp-json">—</pre></details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TESTS ============ -->
+<section role="tabpanel" id="tab-tests" hidden>
+  <div class="two">
+    <div class="panel stack">
+      <div class="row" style="justify-content:space-between"><h2>Customer support agent</h2><button class="btn primary" id="run-support-tests">Run 12 tickets + control tests</button></div>
+      <p class="muted small">Runs <code>run_tests.py</code> with its scripted approvals, the same as the notebook.</p>
+      <div id="support-tests"></div>
+    </div>
+    <div class="panel stack">
+      <div class="row" style="justify-content:space-between"><h2>Bistro Uno booking agent</h2><button class="btn wine" id="run-booking-tests">Run 12 chats + control tests</button></div>
+      <p class="muted small">Runs <code>booking_agent.run_chat_suite()</code> and <code>booking_tests.py</code>.</p>
+      <div id="booking-tests"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DESIGN ============ -->
+<section role="tabpanel" id="tab-design" hidden>
+  <div class="stack">
+    <div class="two">
+      <div class="panel stack"><h2>Support agent: tools and settings</h2><div id="d-support"></div></div>
+      <div class="panel stack"><h2>Booking agent: tools and settings</h2><div id="d-booking"></div></div>
+    </div>
+    <div class="panel stack"><h2>Diagrams</h2><div class="diagrams" id="d-diagrams"></div></div>
+  </div>
+</section>
+</main>
+
+<dialog id="zoom"><img alt=""></dialog>
+
+<script>
+const $ = (s, el=document) => el.querySelector(s);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const api = async (path, body) => {
+  const r = await fetch(path, body === undefined ? {} : {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+  let j = {}; try { j = await r.json(); } catch {}
+  if (!r.ok && j.ok === undefined) j.ok = false;
+  return j;
+};
+const statusTag = s => {
+  const v = String(s ?? "—");
+  const cls = /resolved|booked|approved|pass|cancel_own/.test(v) ? "go" : /reject|fail|refused|error/.test(v) ? "stop"
+            : /pending|timeout|awaiting|escalat|offered|handed|callback/.test(v) ? "wait" : "";
+  return `<span class="tag ${cls}">${esc(v.replaceAll("_"," "))}</span>`;
+};
+const fmtSecs = s => s >= 60 ? `${Math.floor(s/60)} min ${String(s%60).padStart(2,"0")} s` : `${s} s`;
+
+/* ---------- tabs ---------- */
+const tabs = [...document.querySelectorAll("nav [role=tab]")];
+function showTab(name){
+  tabs.forEach(t => t.setAttribute("aria-selected", t.dataset.tab === name));
+  document.querySelectorAll("[role=tabpanel]").forEach(p => p.hidden = p.id !== "tab-" + name);
+  try { localStorage.setItem("duty-tab", name); } catch {}
+  if (name === "design") loadDesign();
+}
+tabs.forEach(t => t.addEventListener("click", () => showTab(t.dataset.tab)));
+
+/* ---------- health ---------- */
+let HEALTH = {};
+api("/api/health").then(h => {
+  HEALTH = h;
+  $("#health").innerHTML = `Support agent <b>${h.support ? "loaded" : "not found"}</b> · Booking agent <b>loaded</b>`;
+});
+
+/* ============ SUPPORT ============ */
+let TICKETS = [], RAW = {}, current = null, mode = "live", lastPendingId = null, supportPoll = null, OPENAI = false;
+
+async function loadTickets(){
+  const j = await api("/api/support/tickets");
+  if (!j.ok){
+    $("#ticket-list").innerHTML = `<div class="err">The support agent did not load: ${esc(j.error)}.<br><br>Put <code>web_app.py</code> in the same folder as <code>support_agent.py</code> and <code>supportkit_mock.py</code>, then restart it.</div>`;
+    $("#ticket-panel").innerHTML = `<div class="empty">The Bistro Uno tab still works without the support agent.</div>`;
+    return;
+  }
+  TICKETS = j.tickets; RAW = j.raw; OPENAI = j.openai_available;
+  $("#ticket-count").textContent = `${TICKETS.length} tickets`;
+  $("#ticket-list").innerHTML = TICKETS.map(t =>
+    `<button data-id="${esc(t.ticket_id)}"><span class="tid">${esc(t.ticket_id)}</span>${esc(t.subject)}<span class="sub">${esc((t.preview||"").slice(0,70))}${(t.preview||"").length>70?"…":""}</span></button>`).join("");
+  $("#ticket-list").addEventListener("click", e => { const b = e.target.closest("button[data-id]"); if (b) selectTicket(b.dataset.id); });
+  selectTicket(TICKETS[0].ticket_id);
+}
+
+function selectTicket(id){
+  current = TICKETS.find(t => t.ticket_id === id);
+  document.querySelectorAll("#ticket-list button").forEach(b => b.setAttribute("aria-current", b.dataset.id === id));
+  const exp = current.expect || {};
+  $("#ticket-panel").innerHTML = `
+    <div class="row" style="justify-content:space-between">
+      <div><h2>${esc(current.ticket_id)} · ${esc(current.subject)}</h2>${current.sender?`<p class="muted small">From ${esc(current.sender)}</p>`:""}</div>
+      ${exp.approver?`<span class="tag harbour">expects ${esc(exp.approver)} approval</span>`:exp.queue?`<span class="tag harbour">expects ${esc(exp.queue)} queue</span>`:""}
+    </div>
+    ${current.preview?`<p class="ticket-body">${esc(current.preview)}</p>`:""}
+    <details><summary class="small muted">Edit the ticket before running it</summary>
+      <textarea id="ticket-json" spellcheck="false" aria-label="Ticket JSON">${esc(JSON.stringify(RAW[id], null, 2))}</textarea>
+      <p class="muted small">Change the message to try your own wording. Keep the <code>ticket_id</code> and the field names.</p>
+    </details>
+    <div class="row" style="justify-content:space-between">
+      <div class="segmented" role="group" aria-label="How approvals are made">
+        <button type="button" data-mode="live" aria-pressed="${mode==="live"}">I approve live</button>
+        <button type="button" data-mode="script" aria-pressed="${mode==="script"}">Decide in advance</button>
+      </div>
+      <div class="row">
+        ${OPENAI?`<label class="small row" style="gap:6px"><input type="checkbox" id="use-openai"> Use OpenAI drafts</label>`:""}
+        <label class="small row" style="gap:6px" title="Keep the scratchpad from the last run, so the resume rule applies"><input type="checkbox" id="resume"> Resume from scratchpad</label>
+        <button class="btn primary" id="run-ticket">Run ${esc(current.ticket_id)}</button>
+      </div>
+    </div>
+    <div id="script-box" ${mode==="script"?"":"hidden"}>
+      <p class="muted small" style="margin-bottom:8px">Each gate the agent reaches uses the answer you set here. Gates it never reaches are ignored.</p>
+      <div class="script-grid">
+        ${["reply","refund","escalation_review"].map(k => `<label class="field">${k.replace("_"," ")}
+          <select data-gate="${k}"><option value="approve">approve</option><option value="reject">reject</option><option value="timeout">no answer (time out)</option></select></label>`).join("")}
+      </div>
+    </div>`;
+  $("#ticket-panel .segmented").addEventListener("click", e => {
+    const b = e.target.closest("button[data-mode]"); if (!b) return;
+    mode = b.dataset.mode;
+    $("#ticket-panel .segmented").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
+    $("#script-box").hidden = mode !== "script";
+  });
+  $("#run-ticket").addEventListener("click", runTicket);
+}
+
+async function runTicket(){
+  let ticket = $("#ticket-json").value;
+  const script = {};
+  document.querySelectorAll("[data-gate]").forEach(s => script[s.dataset.gate] = s.value);
+  const j = await api("/api/support/run", {ticket, mode, script, use_openai: !!$("#use-openai")?.checked, resume: $("#resume").checked});
+  if (!j.ok){ $("#support-result").innerHTML = `<div class="err">${esc(j.error)}</div>`; return; }
+  $("#support-result").innerHTML = `<div class="panel"><p class="muted">Running ${esc(JSON.parse(ticket).ticket_id)}… ${mode==="live"?"watch Your desk on the right for approvals.":""}</p></div>`;
+  pollSupport(true);
+}
+
+function renderDeskSlip(p, idSel, onDecide, who, laneTotal){
+  const host = $(idSel);
+  if (!p){ host.dataset.pid = ""; return false; }
+  if (host.dataset.pid === p.id) return true;
+  host.dataset.pid = p.id;
+  host.innerHTML = `
+    <div class="slip enter" role="alertdialog" aria-labelledby="slip-title-${p.id}">
+      <div class="who">${esc(who)}</div>
+      <h3 id="slip-title-${p.id}">Your decision is needed</h3>
+      <p class="prompt">${esc(p.prompt)}</p>
+      <div class="lane"><i style="width:100%"></i></div>
+      <div class="lane-label" data-remaining="${p.remaining}" data-total="${laneTotal}"></div>
+      <div class="decide">
+        <button class="btn approve" data-d="approve">Approve</button>
+        <button class="btn reject" data-d="reject">Reject</button>
+        <button class="btn lapse" data-d="timeout">Leave it unanswered (time lane expires, nothing happens)</button>
+      </div>
+    </div>`;
+  host.querySelectorAll("[data-d]").forEach(b => b.addEventListener("click", () => {
+    host.querySelectorAll("[data-d]").forEach(x => x.disabled = true);
+    onDecide(b.dataset.d);
+  }));
+  tickLanes(0);
+  host.querySelector("[data-d=approve]").focus({preventScroll:true});
+  return true;
+}
+// countdowns tick locally between polls
+function tickLanes(step){ document.querySelectorAll(".lane-label[data-remaining]").forEach(el => {
+  let r = Math.max(0, Number(el.dataset.remaining) - step); el.dataset.remaining = r;
+  const tot = Number(el.dataset.total) || 1;
+  el.textContent = `${fmtSecs(r)} left in the time lane. If nobody answers, no money moves.`;
+  const bar = el.previousElementSibling?.firstElementChild; if (bar) bar.style.width = (100*r/tot) + "%";
+}); }
+setInterval(() => tickLanes(1), 1000);
+
+async function pollSupport(force){
+  clearTimeout(supportPoll);
+  const s = await api("/api/support/state");
+  if (!s.ok) return;
+  // desk
+  const p = s.pending ? {...s.pending, remaining: Math.max(0, Math.round(s.pending.lane_s - (Date.now()/1000 - s.pending.asked_at)))} : null;
+  const shown = renderDeskSlip(p, "#support-desk", d => api("/api/support/answer", {id: p.id, decision: d}).then(() => pollSupport(true)),
+    `Ticket ${s.ticket_id} · human desk`, p?.lane_s);
+  if (!shown && !s.running) $("#support-desk").innerHTML = `<div class="desk-idle">No decisions waiting. When the agent needs a person to approve a reply, a refund or an escalation, the request lands here.</div>`;
+  if (!shown && s.running) $("#support-desk").innerHTML = `<div class="desk-idle">The agent is working on ${esc(s.ticket_id)}…</div>`;
+  // log
+  $("#support-log").innerHTML = s.log.length ? s.log.map(l => `<div class="${l.line.startsWith("HUMAN DESK")?"h":""}">${esc(l.line)}</div>`).join("") : `<span class="muted">Nothing yet.</span>`;
+  $("#support-log").scrollTop = 1e6;
+  // store
+  if (s.store){
+    const tot = s.store.refunds.reduce((a,r)=>a+Number(r.amount||0),0);
+    $("#support-store").innerHTML = `${s.store.replies} replies sent · ${s.store.escalations} escalations · ${s.store.refunds.length} refunds (NZ$${tot.toFixed(2)}) · ${s.store.account_changes.length} account changes by the agent`;
+  }
+  const key = s.latest ? `${s.latest.ticket_id}|${s.latest.seconds}|${(s.latest.log||[]).length}` : null;
+  if (!s.running && s.latest && key !== lastRendered) renderSupportResult(s.latest, key);
+  if (s.running || force) supportPoll = setTimeout(() => pollSupport(false), s.running ? 800 : 3000);
+}
+let lastRendered = null;
+
+function timeline(sp){
+  if (!sp) return `<li><span></span><span class="muted">No scratchpad written.</span></li>`;
+  const items = [...(sp.observations||[]).map(o => ({step:o.step, text:o.note})), ...(sp.decisions||[]).map(d => ({step:d.step, text:d.reason, branch:d.branch}))]
+    .sort((a,b) => a.step - b.step);
+  return items.map(i => `<li><span class="st">#${esc(i.step)}</span><span>${i.branch?`<span class="dec">${esc(i.branch)}</span> · `:""}${esc(i.text)}</span></li>`).join("");
+}
+
+function renderSupportResult(r, key){
+  lastRendered = key;
+  if (!r.ok){ $("#support-result").innerHTML = `<div class="panel stack"><div class="err">${esc(r.ticket_id)} stopped with an error: ${esc(r.error)}</div><pre>${esc(r.trace||"")}</pre></div>`; return; }
+  const o = r.out || {};
+  const branch = (o.decisions && o.decisions[0] && o.decisions[0].branch) || o.branch || "—";
+  const approvals = o.approvals || [];
+  $("#support-result").innerHTML = `
+  <div class="panel stack">
+    <div class="row" style="justify-content:space-between"><h2>Result for ${esc(r.ticket_id)}</h2>${statusTag(o.status)}</div>
+    <div class="facts">
+      <div class="fact"><b>${esc(o.issue_class ?? "—")}</b><span>class</span></div>
+      <div class="fact"><b>${esc(o.confidence ?? "—")}</b><span>confidence</span></div>
+      <div class="fact"><b>${esc(branch)}</b><span>branch</span></div>
+      <div class="fact"><b>${esc(o.refund_id || "none")}</b><span>refund</span></div>
+    </div>
+    <div class="stack"><h3>Human gates</h3>
+      ${approvals.length ? `<table><thead><tr><th>Who</th><th>Decision about</th><th>Outcome</th></tr></thead><tbody>${approvals.map(a => `<tr><td>${esc(a.role)}</td><td>${esc(a.kind)}</td><td>${statusTag(a.status)}</td></tr>`).join("")}</tbody></table>` : `<div class="empty">No human gate was reached.</div>`}
+    </div>
+    <div class="stack"><h3>What the customer received</h3>
+      ${r.replies.length ? r.replies.map(m => `<div class="reply-out">${esc(m.body)}</div>`).join("") : `<div class="empty">Nothing was sent. A reply only leaves after a person approves it.</div>`}
+    </div>
+    ${(r.refunds.length || r.escalations.length) ? `<div class="row">${r.refunds.map(f => `<span class="tag go">refund ${esc(f.refund_id)} · NZ$${Number(f.amount).toFixed(2)}</span>`).join("")}${r.escalations.map(e => `<span class="tag wait">escalated to ${esc(e.queue)}</span>`).join("")}</div>` : ""}
+    <div class="stack"><h3>Scratchpad, step by step</h3><ul class="timeline">${timeline(r.scratchpad)}</ul>
+      <details><summary class="small muted">Raw scratchpad JSON</summary><pre>${esc(JSON.stringify(r.scratchpad, null, 2))}</pre></details></div>
+  </div>`;
+}
+
+$("#support-reset").addEventListener("click", async () => {
+  const j = await api("/api/support/reset", {});
+  if (!j.ok) return alertInline("#support-store", j.error);
+  $("#support-result").innerHTML = ""; pollSupport(true);
+});
+function alertInline(sel, msg){ $(sel).innerHTML = `<div class="err">${esc(msg)}</div>`; }
+
+/* ============ BOOKING ============ */
+let chatId = null, bookingPoll = null, laneTotal = 600;
+api("/api/booking/samples").then(j => {
+  $("#chips").innerHTML = j.samples.map(s => `<button type="button" data-s='${esc(JSON.stringify(s))}' title="${esc(s.subject)}">${esc(s.chat_id)} ${esc(s.subject)}</button>`).join("");
+  $("#chips").addEventListener("click", e => {
+    const b = e.target.closest("button[data-s]"); if (!b) return;
+    const s = JSON.parse(b.dataset.s);
+    if ($("#g-name").value !== s.guest_name || $("#g-phone").value !== s.phone) chatId = null;
+    $("#g-name").value = s.guest_name; $("#g-phone").value = s.phone; $("#g-text").value = s.text; $("#g-text").focus();
+  });
+});
+
+$("#composer").addEventListener("submit", async e => {
+  e.preventDefault();
+  const text = $("#g-text").value.trim(); if (!text) return;
+  $("#g-send").disabled = true;
+  const j = await api("/api/booking/message", {chat_id: chatId, guest_name: $("#g-name").value, phone: $("#g-phone").value, text});
+  $("#g-send").disabled = false;
+  if (!j.ok){ $("#msgs").insertAdjacentHTML("beforeend", `<div class="bubble note">${esc(j.error)}</div>`); return; }
+  if (j.chat_id !== chatId && chatId) $("#msgs").innerHTML = "";
+  chatId = j.chat_id; $("#g-text").value = "";
+  pollBooking();
+});
+["#g-name","#g-phone"].forEach(s => $(s).addEventListener("change", () => { chatId = null; $("#msgs").innerHTML = ""; pollBooking(); }));
+$("#new-chat").addEventListener("click", () => { chatId = null; $("#msgs").innerHTML = ""; pollBooking(); $("#g-text").focus(); });
+$("#lane").addEventListener("change", async e => { await api("/api/booking/settings", {lane_s: Number(e.target.value)}); });
+$("#booking-reset").addEventListener("click", async () => {
+  const j = await api("/api/booking/reset", {});
+  if (!j.ok) return alertInline("#records", j.error);
+  chatId = null; $("#msgs").innerHTML = ""; pollBooking();
+});
+
+async function pollBooking(){
+  clearTimeout(bookingPoll);
+  const s = await api("/api/booking/state" + (chatId ? `?chat_id=${encodeURIComponent(chatId)}` : ""));
+  laneTotal = s.lane_s;
+  // transcript
+  const m = $("#msgs");
+  const atBottom = m.scrollHeight - m.scrollTop - m.clientHeight < 40;
+  const waitingMgr = s.pending.some(p => p.chat_id === chatId);
+  m.innerHTML = s.transcript.length
+    ? s.transcript.map(t => `<div class="bubble ${t.from}">${esc(t.text)}</div>`).join("")
+      + (s.running ? `<div class="typing">${waitingMgr ? "Checking with the manager…" : "Bistro Uno is typing…"}</div>` : "")
+      + (s.error ? `<div class="bubble note">Agent error: ${esc(s.error)}</div>` : "")
+    : `<div class="bubble note">Hi! Ask Bistro Uno for a table, the opening hours, or to cancel a booking. Try a test message below.</div>`;
+  if (atBottom || s.running) m.scrollTop = 1e6;
+
+  // manager slip (oldest pending first)
+  const p = s.pending[0];
+  const slipShown = renderDeskSlip(p ? {id: p.approval_id, prompt: `${p.summary}. Approve the group booking and charge the ₱${Number(p.amount).toLocaleString()} deposit?`, remaining: p.remaining_s} : null,
+    "#booking-desk", d => api("/api/booking/decide", {approval_id: p.approval_id, decision: d}).then(pollBooking),
+    `Chat ${p?.chat_id} · manager approval`, s.lane_s);
+  if (!slipShown) $("#booking-desk").innerHTML = s.decided.length
+    ? `<div class="desk-idle">No group bookings waiting for you. Last decision: ${esc(s.decided[0].summary)} → <b>${esc(s.decided[0].status)}</b>.</div>`
+    : `<div class="desk-idle">You're the manager. Groups of more than 8 need your approval before the ₱2,000 deposit is charged; their requests appear here.</div>`;
+
+  // chat state
+  const sp = s.scratchpad;
+  if (sp){
+    const stepPct = 100*sp.step/s.limits.step_cap, qPct = 100*sp.questions_asked/s.limits.question_cap;
+    $("#chat-state").innerHTML = `
+      <div class="row">${statusTag(sp.status)} ${sp.branch?`<span class="tag wine">${esc(sp.branch)}</span>`:""} <span class="muted small">chat ${esc(sp.chat_id)}</span></div>
+      <div class="facts">
+        <div class="fact"><b>${esc(sp.date ?? "?")}</b><span>date</span></div>
+        <div class="fact"><b>${esc(sp.time ?? "?")}</b><span>time</span></div>
+        <div class="fact"><b>${esc(sp.party_size ?? "?")}</b><span>party size</span></div>
+        <div class="fact"><b>${esc(sp.booking_id ?? "none")}</b><span>booking</span></div>
+      </div>
+      <div class="meter"><span style="width:112px">Steps ${sp.step}/${s.limits.step_cap}</span><span class="bar"><i class="${stepPct>=80?"hot":""}" style="width:${Math.min(100,stepPct)}%"></i></span></div>
+      <div class="meter"><span style="width:112px">Questions ${sp.questions_asked}/${s.limits.question_cap}</span><span class="bar"><i class="${qPct>=100?"hot":""}" style="width:${Math.min(100,qPct)}%"></i></span></div>
+      <div class="row small">${sp.deposit_charged?`<span class="tag go">deposit ${esc(sp.deposit_receipt)}</span>`:`<span class="tag">no deposit charged</span>`}
+        ${sp.approval?`<span class="tag ${sp.approval.status==="approved"?"go":sp.approval.status==="rejected"?"stop":"wait"}">manager ${esc(sp.approval.status)}</span>`:""}
+        ${(sp.injection_flags||[]).map(f=>`<span class="tag stop">flag: ${esc(f.replaceAll("_"," "))}</span>`).join("")}
+        ${sp.seating_preference?`<span class="tag wine">remembers: ${esc(sp.seating_preference)}</span>`:""}</div>`;
+    $("#chat-timeline").innerHTML = timeline(sp);
+    $("#sp-json").textContent = JSON.stringify(sp, null, 2);
+  } else {
+    $("#chat-state").innerHTML = `<div class="empty">Send a message to start a chat.</div>`;
+    $("#chat-timeline").innerHTML = `<li><span></span><span class="muted">Steps appear here as the agent works.</span></li>`;
+    $("#sp-json").textContent = "—";
+  }
+
+  // records
+  $("#records").innerHTML = `
+    <table><thead><tr><th>Booking</th><th>Guest</th><th>When</th><th>Party</th><th>Status</th><th>Deposit</th></tr></thead><tbody>
+    ${s.bookings.map(b => `<tr><td>${esc(b.booking_id)}</td><td>${esc(b.guest_name)}</td><td>${esc(b.date)} ${esc(b.time)}</td><td>${esc(b.party_size)}</td><td>${statusTag(b.status)}</td><td>${esc(b.deposit_receipt || "—")}</td></tr>`).join("")}
+    </tbody></table>
+    ${s.manager_notes.length ? `<p class="small" style="margin-top:10px"><b>Manager queue:</b> ${s.manager_notes.map(n => `${esc(n.chat_id)} (${esc(n.why)})`).join(", ")}</p>` : ""}
+    <p class="small muted" style="margin-top:6px">Seating preferences remembered across chats: ${Object.keys(s.memory).length ? Object.values(s.memory).map(esc).join(", ") + " (keyed by a hash of the phone)" : "none yet"}.</p>`;
+
+  const busy = s.running || s.pending.length;
+  bookingPoll = setTimeout(pollBooking, busy ? 800 : 4000);
+}
+
+/* ============ TESTS ============ */
+const passTag = p => p ? `<span class="tag go">pass</span>` : `<span class="tag stop">fail</span>`;
+$("#run-support-tests").addEventListener("click", async e => {
+  e.target.disabled = true; $("#support-tests").innerHTML = `<p class="muted">Running…</p>`;
+  const j = await api("/api/tests/support", {}); e.target.disabled = false;
+  if (!j.ok) return $("#support-tests").innerHTML = `<div class="err">${esc(j.error)}</div>`;
+  const rows = j.tickets || [];
+  $("#support-tests").innerHTML = `
+    ${j.tickets_error ? `<div class="err">${esc(j.tickets_error)}</div>` : `<p><b>${rows.filter(r=>r.pass).length}/${rows.length}</b> tickets pass</p>
+    <table><thead><tr><th>Ticket</th><th>Result</th><th>Details</th></tr></thead><tbody>${rows.map(r => `<tr><td>${esc(r.ticket_id ?? r.ticket ?? "")}</td><td>${passTag(r.pass)}</td><td class="small muted">${esc(Object.entries(r).filter(([k])=>!["pass","ticket_id"].includes(k)).map(([k,v])=>`${k}: ${typeof v==="object"?JSON.stringify(v):v}`).join(" · ").slice(0,160))}</td></tr>`).join("")}</tbody></table>
+    ${j.invariants ? `<h3 style="margin-top:12px">Invariants</h3><pre>${esc(JSON.stringify(j.invariants, null, 1))}</pre>` : ""}`}
+    <h3 style="margin-top:12px">Control tests</h3>
+    <table><tbody>${(j.controls||[]).map(c => `<tr><td>${passTag(c.pass)}</td><td>${esc(c.name)}<div class="small muted">${esc(JSON.stringify(c.evidence).slice(0,180))}</div></td></tr>`).join("") || `<tr><td class="muted">No control tests found in run_tests.py</td></tr>`}</tbody></table>`;
+});
+$("#run-booking-tests").addEventListener("click", async e => {
+  e.target.disabled = true; $("#booking-tests").innerHTML = `<p class="muted">Running…</p>`;
+  const j = await api("/api/tests/booking", {}); e.target.disabled = false;
+  $("#booking-tests").innerHTML = `
+    <p><b>${j.chats.filter(r=>r.pass).length}/${j.chats.length}</b> chats pass · <b>${Object.values(j.invariants).filter(Boolean).length}/${Object.keys(j.invariants).length}</b> invariants hold · <b>${j.controls.filter(c=>c.pass).length}/${j.controls.length}</b> control tests pass</p>
+    <table><thead><tr><th>Chat</th><th>Branch</th><th>Status</th><th>Steps</th><th></th></tr></thead><tbody>${j.chats.map(r => `<tr><td>${esc(r.chat_id)} ${esc(r.subject)}</td><td>${esc(r.branch)}</td><td>${statusTag(r.status)}</td><td>${esc(r.step)}</td><td>${passTag(r.pass)}</td></tr>`).join("")}</tbody></table>
+    <h3 style="margin-top:12px">Invariants</h3>
+    <table><tbody>${Object.entries(j.invariants).map(([k,v]) => `<tr><td>${passTag(v)}</td><td>${esc(k)}</td></tr>`).join("")}</tbody></table>
+    <h3 style="margin-top:12px">Control tests</h3>
+    <table><tbody>${j.controls.map(c => `<tr><td>${passTag(c.pass)}</td><td>${esc(c.name)}<div class="small muted">${esc(JSON.stringify(c.evidence).slice(0,180))}</div></td></tr>`).join("")}</tbody></table>`;
+});
+
+/* ============ DESIGN ============ */
+let designLoaded = false;
+async function loadDesign(){
+  if (designLoaded) return; designLoaded = true;
+  const d = await api("/api/design");
+  const toolTable = tools => `<table><thead><tr><th>Tool</th><th>Effect</th><th>Reversible?</th><th>Autonomy</th></tr></thead><tbody>${tools.map(t => `<tr><td><code>${esc(t.tool)}</code></td><td>${esc(t.effect)}</td><td>${esc(t.reversible)}</td><td>${/not.exposed/.test(t.autonomy)?`<span class="tag stop">${esc(t.autonomy)}</span>`:esc(t.autonomy)}</td></tr>`).join("")}</tbody></table>`;
+  const settings = s => `<table><tbody>${Object.entries(s).map(([k,v]) => `<tr><td><code>${esc(k)}</code></td><td>${esc(Array.isArray(v)?v.join(", "):v)}</td></tr>`).join("")}</tbody></table>`;
+  $("#d-support").innerHTML = d.support ? toolTable(d.support.tools) + `<h3>Settings</h3>` + settings(d.support.settings) : `<div class="err">${esc(d.support_error)}</div>`;
+  $("#d-booking").innerHTML = toolTable(d.booking.tools) + `<h3>Settings</h3>` + settings(d.booking.settings);
+  $("#d-diagrams").innerHTML = d.diagrams.length ? d.diagrams.map(n => `<figure><img src="/diagrams/${encodeURIComponent(n)}" alt="${esc(n)}" loading="lazy"><figcaption>${esc(n.replace(/^\d+_/,"").replace(/\.png$/,"").replaceAll("_"," "))}</figcaption></figure>`).join("") : `<div class="empty">No diagrams/ folder found next to web_app.py.</div>`;
+  $("#d-diagrams").addEventListener("click", e => { const img = e.target.closest("img"); if (!img) return; $("#zoom img").src = img.src; $("#zoom").showModal(); });
+}
+$("#zoom").addEventListener("click", () => $("#zoom").close());
+
+/* ---------- boot ---------- */
+loadTickets(); pollSupport(true); pollBooking();
+let start = "support"; try { start = localStorage.getItem("duty-tab") || "support"; } catch {}
+showTab(start);
+</script>
+</body>
+</html>

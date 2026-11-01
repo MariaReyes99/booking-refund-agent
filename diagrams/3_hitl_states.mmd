@@ -1,0 +1,20 @@
+stateDiagram-v2
+    [*] --> Proposed: agent proposes action<br/>(refund / reply / escalation)
+    Proposed --> Pending: write idempotency key + payload hash to scratchpad
+    Pending --> Approved: person approves (role ≥ required)
+    Pending --> Rejected: person rejects + reason
+    Pending --> TimedOut: no answer in 15 min
+    Approved --> Executed: tool runs with approval bound<br/>to exact order + amount / reply text
+    Executed --> Logged: refund_id / reply_id written
+    Rejected --> Alternative: agent drafts alternative<br/>(goes back to a person)
+    TimedOut --> HumanQueue: holding reply · nothing irreversible
+    Alternative --> Logged
+    HumanQueue --> Logged
+    Logged --> [*]
+
+    note right of Executed
+        Crash here? On restart the scratchpad has
+        the approval + idempotency key, so the
+        provider returns the SAME refund_id.
+        The manager is not asked twice.
+    end note

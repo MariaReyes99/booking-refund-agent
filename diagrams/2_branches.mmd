@@ -1,0 +1,39 @@
+flowchart TD
+    IN([Ticket arrives]) --> G{Injection<br/>guard}
+    G -- flags found --> SEC
+    G -- clean --> CL["classify_ticket()<br/>class + confidence"]
+    CL --> R{Router}
+
+    R -- "class ∈ {order_status, how_to}<br/>AND confidence ≥ 0.85" --> AC[auto_close<br/><i>safe template</i>]
+    R -- "refund · account_change ·<br/>0.5 ≤ conf &lt; 0.85" --> RH[route_to_human<br/><i>reversible / needs a decision</i>]
+    R -- "legal_threat or security" --> ES[escalate<br/><i>two-factor</i>]
+    R -- "confidence &lt; 0.5 or no class" --> UN[unknown<br/><i>FALLBACK</i>]
+
+    RH --> RF{Refund?}
+    RF -- "amount ≤ NZ$100" --> SA[Support agent approves]
+    RF -- "amount &gt; NZ$100" --> MG[Manager approves]
+    RF -- "order not sender's" --> FR[Fraud review queue]
+    RF -- "outside 30 days" --> PO[Human decides exception]
+    RH --> ACC[Account change → accounts team<br/>agent never makes it]
+
+    ES --> SEC[Security queue]
+    ES --> LEG[Legal queue]
+    SEC --> TF[Counter-model + security analyst]
+    LEG --> TF2[Counter-model + legal reviewer]
+
+    UN --> Q[Clarifying question ≤ 3<br/>+ general human queue]
+
+    AC & SA & MG & FR & PO & ACC & TF & TF2 & Q --> EV[Evaluator checks draft]
+    EV --> HR[Human approves every reply]
+    HR --> OUT([send_reply])
+
+    classDef auto fill:#d1fae5,stroke:#059669,color:#064e3b
+    classDef human fill:#cffafe,stroke:#0891b2,color:#164e63
+    classDef esc fill:#ffedd5,stroke:#ea580c,color:#7c2d12
+    classDef unk fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    classDef gate fill:#ede9fe,stroke:#6d28d9,color:#3b0764
+    class AC auto
+    class RH,RF,ACC,FR,PO human
+    class ES,SEC,LEG,TF,TF2 esc
+    class UN,Q unk
+    class SA,MG,HR gate
